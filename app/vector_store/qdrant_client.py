@@ -294,20 +294,37 @@ class QdrantVectorStore:
         request: Dict[str, Any],
         original_filters: Optional[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        """Execute semantic search with prefetch and fusion."""
-        # Execute query with prefetch
-        search_results = self.client.query_points(
-            collection_name=self.collection_name,
-            prefetch=request.get("prefetch"),
-            query=request["query"],
-            using=request["using"],
-            query_filter=request.get("filter"),
-            limit=request["limit"],
-            offset=request.get("offset", 0),
-            score_threshold=request.get("score_threshold"),
-            with_payload=True,
-            with_vectors=False,
-        )
+        """Execute semantic search with prefetch and DBSF fusion."""
+        prefetch = request.get("prefetch")
+
+        # Use FusionQuery with DBSF when we have multiple vectors to fuse
+        if prefetch and len(prefetch) > 1:
+            # Multiple vectors: use DBSF fusion to combine results
+            search_results = self.client.query_points(
+                collection_name=self.collection_name,
+                prefetch=prefetch,
+                query=models.FusionQuery(fusion=models.Fusion.DBSF),
+                query_filter=request.get("filter"),
+                limit=request["limit"],
+                offset=request.get("offset", 0),
+                score_threshold=request.get("score_threshold"),
+                with_payload=True,
+                with_vectors=False,
+            )
+        else:
+            # Single vector: use direct query
+            search_results = self.client.query_points(
+                collection_name=self.collection_name,
+                prefetch=prefetch,
+                query=request["query"],
+                using=request["using"],
+                query_filter=request.get("filter"),
+                limit=request["limit"],
+                offset=request.get("offset", 0),
+                score_threshold=request.get("score_threshold"),
+                with_payload=True,
+                with_vectors=False,
+            )
 
         results = []
         for point in search_results.points:
@@ -396,6 +413,6 @@ class QdrantVectorStore:
         return {
             "name": self.collection_name,
             "points_count": info.points_count,
-            "vectors_count": info.vectors_count,
-            "status": info.status.name,
+            "vectors_count": getattr(info, 'vectors_count', info.points_count),
+            "status": info.status.name if hasattr(info.status, 'name') else str(info.status),
         }
