@@ -1,0 +1,23 @@
+# Core
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Vector database
+qdrant-client>=1.7.0
+
+# Embeddings
+FlagEmbedding>=1.2.0
+transformers>=4.36.0,<4.46.0
+
+# OpenAI (for query parsing)
+openai>=1.0.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Development (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# httpx>=0.24.0

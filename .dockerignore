@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv
+ENV
+
+# IDE
+.idea
+.vscode
+.claude
+*.swp
+*.swo
+
+# Local environment files (not for container)
+.env.local
+.env.*.local
+
+# Tests
+tests/
+pytest.ini
+.pytest_cache
+
+# Documentation
+*.md
+docs/
+
+# Misc
+.DS_Store
+*.log
