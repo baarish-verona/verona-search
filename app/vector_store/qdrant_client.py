@@ -206,8 +206,8 @@ class QdrantVectorStore:
         dense_vectors = dense_vectors or {}
         colbert_vectors = colbert_vectors or {}
 
-        # Build filter
-        filter_obj = FilterBuilder.build(filters) if filters else None
+        # Build filter with defaults (is_circulateable=True, is_paused!=True)
+        filter_obj = FilterBuilder.build_with_defaults(filters)
 
         # Add skip_ids filter if provided
         if skip_ids:
@@ -216,18 +216,13 @@ class QdrantVectorStore:
                 str(uuid.uuid5(uuid.NAMESPACE_DNS, profile_id))
                 for profile_id in skip_ids
             ]
-            skip_filter = models.Filter(
-                must_not=[
-                    models.HasIdCondition(has_id=point_ids_to_skip)
-                ]
+            # Add to existing must_not conditions
+            existing_must_not = list(filter_obj.must_not or [])
+            existing_must_not.append(models.HasIdCondition(has_id=point_ids_to_skip))
+            filter_obj = models.Filter(
+                must=filter_obj.must,
+                must_not=existing_must_not
             )
-            if filter_obj:
-                # Combine with existing filter
-                filter_obj = models.Filter(
-                    must=[filter_obj, skip_filter]
-                )
-            else:
-                filter_obj = skip_filter
 
         # Build query context
         context = QueryContext(

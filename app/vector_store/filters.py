@@ -142,3 +142,56 @@ class FilterBuilder:
         for field in cls.RANGE_FIELDS:
             range_keys.extend([f"min_{field}", f"max_{field}"])
         return range_keys + list(cls.MATCH_ANY_FIELDS.keys())
+
+    @classmethod
+    def build_default_filters(cls) -> models.Filter:
+        """
+        Build default filters that should always be applied.
+
+        Returns profiles that are:
+        - is_circulateable = True (profile is allowed to be shown)
+        - is_paused != True (profile is not paused by user)
+        """
+        return models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="is_circulateable",
+                    match=models.MatchValue(value=True)
+                ),
+            ],
+            must_not=[
+                models.FieldCondition(
+                    key="is_paused",
+                    match=models.MatchValue(value=True)
+                ),
+            ]
+        )
+
+    @classmethod
+    def build_with_defaults(cls, filters: Optional[Dict[str, Any]] = None) -> models.Filter:
+        """
+        Build filters with default filters always applied.
+
+        Args:
+            filters: Optional user-provided filters
+
+        Returns:
+            Combined filter with defaults + user filters
+        """
+        default_filter = cls.build_default_filters()
+        user_filter = cls.build(filters) if filters else None
+
+        if user_filter is None:
+            return default_filter
+
+        # Combine default and user filters
+        combined_must = list(default_filter.must or [])
+        combined_must_not = list(default_filter.must_not or [])
+
+        if user_filter.must:
+            combined_must.extend(user_filter.must)
+
+        return models.Filter(
+            must=combined_must if combined_must else None,
+            must_not=combined_must_not if combined_must_not else None
+        )

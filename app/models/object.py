@@ -47,6 +47,7 @@ class User(BaseModel):
     gender: str
     height: int
     dob: str
+    age: Optional[int] = None  # Computed from dob
     current_location: str
     annual_income: Optional[float] = None
     religion: str
@@ -81,6 +82,20 @@ class User(BaseModel):
         if not text:
             return None
         return hashlib.md5(text.encode()).hexdigest()
+
+    @staticmethod
+    def _compute_age(dob: str) -> Optional[int]:
+        """Compute age from date of birth string (YYYY-MM-DD format)."""
+        try:
+            birth_date = datetime.strptime(dob, "%Y-%m-%d")
+            today = datetime.now()
+            age = today.year - birth_date.year
+            # Adjust if birthday hasn't occurred yet this year
+            if (today.month, today.day) < (birth_date.month, birth_date.day):
+                age -= 1
+            return age
+        except (ValueError, TypeError):
+            return None
 
     @classmethod
     def from_ingest_profile(cls, profile: "IngestUserProfile") -> "User":
@@ -121,6 +136,7 @@ class User(BaseModel):
             gender=profile.gender,
             height=profile.height,
             dob=profile.dob,
+            age=cls._compute_age(profile.dob),
             current_location=profile.current_location,
             annual_income=profile.annual_income,
             # Filter fields
