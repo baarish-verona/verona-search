@@ -45,7 +45,7 @@ class QueryMapper:
         # MatchAny filters (OR condition - all accept arrays)
         "gender": ("gender", "match_any"),
         "religion": ("religion", "match_any"),
-        "location": ("location", "match_any"),
+        "location": ("current_location", "match_any"),  # Payload uses current_location
         "marital_status": ("marital_status", "match_any"),
         "family_type": ("family_type", "match_any"),
         "food_habit": ("food_habits", "match_any"),
@@ -54,13 +54,14 @@ class QueryMapper:
         "religiosity": ("religiosity", "match_any"),
         "fitness": ("fitness", "match_any"),
         "intent": ("intent", "match_any"),
+        "test_lead": ("test_lead", "match_any"),
     }
 
     # All categorical filter keys (all support arrays)
     ARRAY_FILTER_KEYS = [
         "gender", "religion", "location", "marital_status",
         "family_type", "food_habit", "smoking", "drinking",
-        "religiosity", "fitness", "intent"
+        "religiosity", "fitness", "intent", "test_lead"
     ]
 
     @classmethod

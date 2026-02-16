@@ -46,6 +46,7 @@ class User(BaseModel):
     name: Optional[str] = None
     is_circulateable: bool = False
     is_paused: bool = False
+    test_lead: Optional[bool] = None
     last_active: Optional[datetime] = None
     gender: str
     height: int
@@ -115,7 +116,6 @@ class User(BaseModel):
             and not profile.is_non_serviceable
             and not profile.is_soft_deleted
             and not is_paused
-            and not profile.test_lead
         )
 
         # Get last_active from app_version_details
@@ -142,6 +142,7 @@ class User(BaseModel):
             name=name,
             is_circulateable=is_circulateable,
             is_paused=is_paused,
+            test_lead=True if profile.test_lead else None,
             last_active=last_active,
             # Demographics
             gender=profile.gender,

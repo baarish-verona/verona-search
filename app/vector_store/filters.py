@@ -15,7 +15,7 @@ class FilterBuilder:
     MATCH_ANY_FIELDS = {
         "gender": "gender",
         "religion": "religion",
-        "location": "location",
+        "location": "current_location",  # Payload uses current_location
         "marital_status": "marital_status",
         "family_type": "family_type",
         "food_habit": "food_habits",
@@ -26,13 +26,15 @@ class FilterBuilder:
         "intent": "intent",
         "caste": "caste",
         "open_to_children": "open_to_children",
+        "test_lead": "test_lead",
     }
 
     # All categorical filter keys (all support arrays)
     ARRAY_FILTER_KEYS = [
         "gender", "religion", "location", "marital_status",
         "family_type", "food_habit", "smoking", "drinking",
-        "religiosity", "fitness", "intent", "caste", "open_to_children"
+        "religiosity", "fitness", "intent", "caste", "open_to_children",
+        "test_lead"
     ]
 
     @classmethod
@@ -151,6 +153,7 @@ class FilterBuilder:
         Returns profiles that are:
         - is_circulateable = True (profile is allowed to be shown)
         - is_paused != True (profile is not paused by user)
+        - test_lead != True (exclude test users in controlled production)
         """
         return models.Filter(
             must=[
@@ -162,6 +165,10 @@ class FilterBuilder:
             must_not=[
                 models.FieldCondition(
                     key="is_paused",
+                    match=models.MatchValue(value=True)
+                ),
+                models.FieldCondition(
+                    key="test_lead",
                     match=models.MatchValue(value=True)
                 ),
             ]

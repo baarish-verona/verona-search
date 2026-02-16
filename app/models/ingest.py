@@ -89,7 +89,7 @@ class IngestUserProfile(BaseModel):
     is_soft_deleted: bool = Field(False, alias="isSoftDeleted")
     pause_details: Optional[PauseDetails] = Field(None, alias="pauseDetails")
     onboarded_on: Optional[datetime] = Field(None, alias="onboardedOn")
-    test_lead: bool = Field(False, alias="testLead")
+    test_lead: Optional[bool] = Field(None, alias="testLead")
 
     # Other flags
     force_update_vector_profile: bool = Field(False, alias="forceUpdate")

@@ -237,7 +237,7 @@ class IngestService:
         # Fields to compare (excluding hash fields, vector text fields, and last_active)
         compare_fields = [
             "first_name", "last_name", "name",
-            "is_circulateable", "is_paused",
+            "is_circulateable", "is_paused", "test_lead",
             "gender", "height", "dob", "age", "current_location", "annual_income",
             "religion", "caste", "fitness", "religiosity", "smoking", "drinking",
             "family_type", "food_habits", "intent", "open_to_children",
