@@ -26,6 +26,10 @@ class FilterBuilder:
         "intent": "intent",
         "caste": "caste",
         "open_to_children": "open_to_children",
+    }
+
+    # Boolean filters (handled separately with MatchValue)
+    BOOLEAN_FIELDS = {
         "test_lead": "test_lead",
     }
 
@@ -33,8 +37,7 @@ class FilterBuilder:
     ARRAY_FILTER_KEYS = [
         "gender", "religion", "location", "marital_status",
         "family_type", "food_habit", "smoking", "drinking",
-        "religiosity", "fitness", "intent", "caste", "open_to_children",
-        "test_lead"
+        "religiosity", "fitness", "intent", "caste", "open_to_children"
     ]
 
     @classmethod
@@ -82,6 +85,14 @@ class FilterBuilder:
                         key=payload_field,
                         match=models.MatchAny(any=values)
                     ))
+
+        # Boolean filters (exact match)
+        for api_key, payload_field in cls.BOOLEAN_FIELDS.items():
+            if api_key in filters and filters[api_key] is not None:
+                conditions.append(models.FieldCondition(
+                    key=payload_field,
+                    match=models.MatchValue(value=filters[api_key])
+                ))
 
         if not conditions:
             return None
@@ -194,6 +205,13 @@ class FilterBuilder:
         # Combine default and user filters
         combined_must = list(default_filter.must or [])
         combined_must_not = list(default_filter.must_not or [])
+
+        # If user explicitly filters for test_lead, remove it from must_not
+        if filters and "test_lead" in filters:
+            combined_must_not = [
+                cond for cond in combined_must_not
+                if not (hasattr(cond, 'key') and cond.key == "test_lead")
+            ]
 
         if user_filter.must:
             combined_must.extend(user_filter.must)

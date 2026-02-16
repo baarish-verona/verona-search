@@ -54,14 +54,13 @@ class QueryMapper:
         "religiosity": ("religiosity", "match_any"),
         "fitness": ("fitness", "match_any"),
         "intent": ("intent", "match_any"),
-        "test_lead": ("test_lead", "match_any"),
     }
 
     # All categorical filter keys (all support arrays)
     ARRAY_FILTER_KEYS = [
         "gender", "religion", "location", "marital_status",
         "family_type", "food_habit", "smoking", "drinking",
-        "religiosity", "fitness", "intent", "test_lead"
+        "religiosity", "fitness", "intent"
     ]
 
     @classmethod
