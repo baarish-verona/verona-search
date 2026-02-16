@@ -41,6 +41,9 @@ class ProcessedPhoto(BaseModel):
 class User(BaseModel):
     """Simplified User model for Qdrant storage."""
     id: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    name: Optional[str] = None
     is_circulateable: bool = False
     is_paused: bool = False
     last_active: Optional[datetime] = None
@@ -127,8 +130,16 @@ class User(BaseModel):
         # Build photo collection with CloudFront URLs
         photo_collection = cls._build_photo_collection(profile)
 
+        # Build name if not provided
+        name = profile.name
+        if not name and (profile.first_name or profile.last_name):
+            name = f"{profile.first_name or ''} {profile.last_name or ''}".strip()
+
         return cls(
             id=profile.id,
+            first_name=profile.first_name,
+            last_name=profile.last_name,
+            name=name,
             is_circulateable=is_circulateable,
             is_paused=is_paused,
             last_active=last_active,

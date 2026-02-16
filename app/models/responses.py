@@ -16,12 +16,16 @@ class ProcessedPhotoResponse(BaseModel):
 class SearchResultPayload(BaseModel):
     """Typed payload for search results."""
     id: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    name: Optional[str] = None
     is_circulateable: bool = False
     is_paused: bool = False
     last_active: Optional[datetime] = None
 
     # Demographics
     gender: Optional[str] = None
+    age: Optional[int] = None
     height: Optional[int] = None
     dob: Optional[str] = None
     current_location: Optional[str] = None

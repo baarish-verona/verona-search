@@ -76,6 +76,11 @@ class IngestUserProfile(BaseModel):
     # Required identifier (MongoDB _id)
     id: str = Field(..., alias="_id")
 
+    # Name fields
+    first_name: Optional[str] = Field(None, alias="firstName")
+    last_name: Optional[str] = Field(None, alias="lastName")
+    name: Optional[str] = None
+
     # Status flags for is_circulateable
     is_ql: bool = Field(False, alias="isQL")
     is_active: bool = Field(False, alias="isActive")
