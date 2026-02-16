@@ -28,7 +28,7 @@ class SearchRequest(BaseModel):
     )
 
     # Pagination
-    limit: int = Field(50, ge=1, le=200, description="Maximum results to return")
+    limit: int = Field(100, ge=1, le=200, description="Maximum results to return")
     offset: int = Field(0, ge=0, description="Number of results to skip")
 
     # Score threshold

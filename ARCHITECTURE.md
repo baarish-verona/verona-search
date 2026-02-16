@@ -500,13 +500,144 @@ Execute semantic search with filters.
 ```json
 {
   "query": "Female engineer from IIT aged 25-30",
+  "parsed_queries": {
+    "education_query": "IIT",
+    "profession_query": "engineer",
+    "vibe_report_query": "loves traveling"
+  },
   "filters": {
+    "gender": ["female"],
     "min_age": 25,
-    "max_age": 30
+    "max_age": 30,
+    "religion": ["HI"],
+    "min_height": 60,
+    "max_height": 75,
+    "min_income": 500000,
+    "max_income": 5000000,
+    "location": ["Mumbai", "Delhi"],
+    "marital_status": ["NM"],
+    "family_type": ["NF"],
+    "food_habit": ["VGT", "NEG"],
+    "smoking": ["NS"],
+    "drinking": ["ND", "OD"],
+    "religiosity": ["MO", "LI"],
+    "fitness": ["FIT", "ER"],
+    "intent": ["01"],
+    "caste": ["XX"],
+    "open_to_children": ["OC"]
   },
   "limit": 50,
-  "offset": 0
+  "offset": 0,
+  "score_threshold": 0.0,
+  "skip_ids": ["profile_id_1", "profile_id_2", "profile_id_3"]
 }
+```
+
+#### Request Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | string | No | Natural language query (auto-parsed if no parsed_queries) |
+| `parsed_queries` | object | No | Pre-parsed semantic queries |
+| `parsed_queries.education_query` | string | No | Education search text |
+| `parsed_queries.profession_query` | string | No | Profession search text |
+| `parsed_queries.vibe_report_query` | string | No | Personality/vibe search text |
+| `filters` | object | No | Hard filter conditions |
+| `limit` | int | No | Max results (1-200, default: 100) |
+| `offset` | int | No | Results to skip for pagination (default: 0) |
+| `score_threshold` | float | No | Min similarity score 0-1 (default: 0.0) |
+| `skip_ids` | string[] | No | Profile IDs to exclude from results |
+
+#### Supported Filters
+
+**Range Filters:**
+
+| Filter | Payload Field | Example |
+|--------|---------------|---------|
+| `min_age` / `max_age` | `age` | `"min_age": 25, "max_age": 35` |
+| `min_height` / `max_height` | `height` | `"min_height": 60, "max_height": 78` |
+| `min_income` / `max_income` | `income` | `"min_income": 500000` |
+
+**Categorical Filters (all accept arrays, OR logic):**
+
+| Filter Key | Payload Field | Example |
+|------------|---------------|---------|
+| `gender` | `gender` | `["male", "female"]` |
+| `religion` | `religion` | `["HI", "CH"]` |
+| `location` | `location` | `["Mumbai", "Delhi"]` |
+| `marital_status` | `marital_status` | `["NM"]` |
+| `family_type` | `family_type` | `["NF", "JF"]` |
+| `food_habit` | `food_habits` | `["VGT", "NEG"]` |
+| `smoking` | `smoking` | `["NS"]` |
+| `drinking` | `drinking` | `["ND", "OD"]` |
+| `religiosity` | `religiosity` | `["MO", "LI"]` |
+| `fitness` | `fitness` | `["FIT"]` |
+| `intent` | `intent` | `["01"]` |
+| `caste` | `caste` | `["XX"]` |
+| `open_to_children` | `open_to_children` | `["OC"]` |
+
+#### Pagination
+
+Use `limit` and `offset` for paginated results:
+
+```typescript
+// Page 1: First 100 results
+const page1 = await search({ limit: 100, offset: 0, ... });
+
+// Page 2: Next 100 results
+const page2 = await search({ limit: 100, offset: 100, ... });
+
+// Page 3: Next 100 results
+const page3 = await search({ limit: 100, offset: 200, ... });
+
+// Calculate total pages
+const totalPages = Math.ceil(response.total_count / limit);
+```
+
+The response includes `total_count` for calculating pagination:
+```json
+{
+  "results": [...],
+  "total_count": 450  // Total matching profiles
+}
+```
+
+#### Using skip_ids
+
+The `skip_ids` parameter excludes specific profiles from search results:
+
+```json
+{
+  "parsed_queries": {"profession_query": "engineer"},
+  "filters": {"gender": ["male"]},
+  "skip_ids": ["already_contacted_1", "already_contacted_2", "my_own_profile"]
+}
+```
+
+Use cases:
+- Exclude already viewed/contacted profiles
+- Exclude the searching user's own profile
+- Implement "not interested" functionality
+
+#### Age Calculation
+
+Age is computed at ingestion from `dob` (YYYY-MM-DD format) and stored in Qdrant. However, `dob` is also returned in search results for client-side recalculation:
+
+```typescript
+// Calculate current age from DOB
+function calculateAge(dob: string): number {
+  const birthDate = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+// Use dob from search result for accurate age
+const actualAge = calculateAge(result.payload.dob);
 ```
 
 **Response:**
@@ -520,19 +651,34 @@ Execute semantic search with filters.
   },
   "results": [
     {
-      "id": "user_123",
+      "id": "uuid-point-id",
       "score": 0.85,
       "payload": {
         "id": "68f0cca72aa8021bc6fb544f",
+        "dob": "1995-03-15",
+        "gender": "female",
+        "height": 65,
+        "current_location": "Mumbai",
         "education": "B.Tech from IIT Delhi",
-        "profession": "Software Engineer at Google"
+        "profession": "Software Engineer at Google",
+        "vibe_report": "A compelling synthesis...",
+        "is_circulateable": true,
+        "is_paused": false,
+        "photo_collection": [...]
       }
     }
   ],
   "total_count": 42,
   "vectors_used": ["education(openai)", "profession(openai)"],
-  "filters_applied": {"min_age": 25, "max_age": 30},
-  "search_time_ms": 45.2
+  "filters_applied": {"gender": ["female"], "min_age": 25, "max_age": 30},
+  "search_time_ms": 45.2,
+  "embedding_model": "openai+colbert",
+  "filter_analysis": {
+    "impacts": [...],
+    "recommendations": [...],
+    "total_without_filters": 120,
+    "current_count": 42
+  }
 }
 ```
 
@@ -731,4 +877,265 @@ curl -X POST http://localhost:8000/api/ingest \
 
 # Check API docs
 open http://localhost:8000/docs
+```
+
+---
+
+## Client Integration
+
+### TypeScript/JavaScript Example
+
+```typescript
+const SEARCH_API_BASE = "http://localhost:8000/api";
+
+interface SearchRequest {
+  query?: string;
+  parsed_queries?: {
+    education_query?: string;
+    profession_query?: string;
+    vibe_report_query?: string;
+  };
+  filters?: {
+    gender?: string[];
+    religion?: string[];
+    location?: string[];
+    marital_status?: string[];
+    family_type?: string[];
+    food_habit?: string[];
+    smoking?: string[];
+    drinking?: string[];
+    religiosity?: string[];
+    fitness?: string[];
+    intent?: string[];
+    caste?: string[];
+    open_to_children?: string[];
+    min_age?: number;
+    max_age?: number;
+    min_height?: number;
+    max_height?: number;
+    min_income?: number;
+    max_income?: number;
+  };
+  limit?: number;
+  offset?: number;
+  score_threshold?: number;
+  skip_ids?: string[];
+}
+
+interface SearchResultPayload {
+  id: string;
+  dob: string;
+  gender: string;
+  height: number;
+  current_location: string;
+  annual_income?: number;
+  religion: string;
+  caste: string;
+  fitness: string;
+  religiosity: string;
+  smoking: string;
+  drinking: string;
+  family_type?: string;
+  food_habits: string;
+  intent: string;
+  open_to_children: string;
+  profession?: string;
+  education?: string;
+  vibe_report?: string;
+  blurb?: string;
+  profile_hook?: string;
+  interests: string[];
+  photo_collection: Array<{
+    show_case_id: string;
+    url: string;
+    cropped_url?: string;
+  }>;
+  is_circulateable: boolean;
+  is_paused: boolean;
+  last_active?: string;
+}
+
+interface SearchResult {
+  id: string;
+  score: number;
+  payload: SearchResultPayload;
+}
+
+interface SearchResponse {
+  query?: string;
+  parsed?: Record<string, string>;
+  results: SearchResult[];
+  total_count: number;
+  vectors_used: string[];
+  filters_applied: Record<string, any>;
+  search_time_ms: number;
+  embedding_model: string;
+  filter_analysis?: {
+    impacts: Array<{
+      filter: string;
+      value: any;
+      count_with: number;
+      count_without: number;
+      removed_count: number;
+      impact_percentage: number;
+    }>;
+    recommendations: string[];
+    total_without_filters: number;
+    current_count: number;
+  };
+}
+
+// Calculate age from DOB
+function calculateAge(dob: string): number {
+  const birthDate = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+// Search profiles
+async function searchProfiles(request: SearchRequest): Promise<SearchResponse> {
+  const response = await fetch(`${SEARCH_API_BASE}/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Search failed: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+// Example: Search with filters and skip_ids
+async function findMatches(userId: string, viewedProfileIds: string[]) {
+  const results = await searchProfiles({
+    parsed_queries: {
+      profession_query: "engineer",
+      education_query: "IIT",
+    },
+    filters: {
+      gender: ["female"],
+      min_age: 25,
+      max_age: 32,
+      religion: ["HI"],
+      location: ["Mumbai", "Bangalore", "Delhi"],
+    },
+    limit: 100,
+    offset: 0,
+    skip_ids: [userId, ...viewedProfileIds], // Exclude self and already viewed
+  });
+
+  // Process results with accurate age
+  return results.results.map((result) => ({
+    ...result.payload,
+    calculatedAge: calculateAge(result.payload.dob),
+    matchScore: result.score,
+  }));
+}
+
+// Example: Paginated search
+async function searchWithPagination(
+  filters: SearchRequest["filters"],
+  page: number = 1,
+  pageSize: number = 100
+) {
+  const offset = (page - 1) * pageSize;
+
+  const response = await searchProfiles({
+    filters,
+    limit: pageSize,
+    offset,
+  });
+
+  return {
+    results: response.results.map((r) => ({
+      ...r.payload,
+      age: calculateAge(r.payload.dob),
+      score: r.score,
+    })),
+    pagination: {
+      page,
+      pageSize,
+      totalResults: response.total_count,
+      totalPages: Math.ceil(response.total_count / pageSize),
+      hasNextPage: offset + response.results.length < response.total_count,
+    },
+  };
+}
+
+// Usage
+const page1 = await searchWithPagination({ gender: ["male"], min_age: 25 }, 1);
+const page2 = await searchWithPagination({ gender: ["male"], min_age: 25 }, 2);
+```
+
+### Python Example
+
+```python
+import requests
+from datetime import datetime
+from typing import List, Optional, Dict, Any
+
+SEARCH_API_BASE = "http://localhost:8000/api"
+
+def calculate_age(dob: str) -> int:
+    """Calculate age from DOB string (YYYY-MM-DD)."""
+    birth_date = datetime.strptime(dob, "%Y-%m-%d")
+    today = datetime.now()
+    age = today.year - birth_date.year
+    if (today.month, today.day) < (birth_date.month, birth_date.day):
+        age -= 1
+    return age
+
+def search_profiles(
+    parsed_queries: Optional[Dict[str, str]] = None,
+    filters: Optional[Dict[str, Any]] = None,
+    limit: int = 50,
+    offset: int = 0,
+    skip_ids: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Search profiles with semantic queries and filters."""
+    response = requests.post(
+        f"{SEARCH_API_BASE}/search",
+        json={
+            "parsed_queries": parsed_queries,
+            "filters": filters,
+            "limit": limit,
+            "offset": offset,
+            "skip_ids": skip_ids,
+        },
+    )
+    response.raise_for_status()
+    return response.json()
+
+# Example usage
+def find_matches(user_id: str, viewed_profile_ids: List[str]):
+    results = search_profiles(
+        parsed_queries={
+            "profession_query": "engineer",
+            "education_query": "IIT",
+        },
+        filters={
+            "gender": ["female"],
+            "min_age": 25,
+            "max_age": 32,
+            "religion": ["HI"],
+            "location": ["Mumbai", "Bangalore", "Delhi"],
+        },
+        limit=50,
+        skip_ids=[user_id] + viewed_profile_ids,
+    )
+
+    # Process results with accurate age
+    for result in results["results"]:
+        payload = result["payload"]
+        payload["calculated_age"] = calculate_age(payload["dob"])
+        payload["match_score"] = result["score"]
+
+    return results
 ```

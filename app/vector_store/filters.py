@@ -13,20 +13,27 @@ class FilterBuilder:
     # All categorical filters support multiple values (match_any)
     # Maps API key → Qdrant payload field
     MATCH_ANY_FIELDS = {
-        "genders": "gender",
-        "religions": "religion",
-        "locations": "location",
-        "marital_statuses": "marital_status",
-        "family_types": "family_type",
-        "food_habits": "food_habits",
+        "gender": "gender",
+        "religion": "religion",
+        "location": "location",
+        "marital_status": "marital_status",
+        "family_type": "family_type",
+        "food_habit": "food_habits",
         "smoking": "smoking",
         "drinking": "drinking",
         "religiosity": "religiosity",
         "fitness": "fitness",
         "intent": "intent",
-        "castes": "caste",
+        "caste": "caste",
         "open_to_children": "open_to_children",
     }
+
+    # All categorical filter keys (all support arrays)
+    ARRAY_FILTER_KEYS = [
+        "gender", "religion", "location", "marital_status",
+        "family_type", "food_habit", "smoking", "drinking",
+        "religiosity", "fitness", "intent", "caste", "open_to_children"
+    ]
 
     @classmethod
     def build(cls, filters: Dict[str, Any]) -> Optional[models.Filter]:

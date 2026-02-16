@@ -40,8 +40,9 @@ class Settings(BaseSettings):
     colbert_batch_size: int = 20
 
     # Search defaults
-    default_search_limit: int = 50
+    default_search_limit: int = 100
     max_search_limit: int = 200
+    prefetch_limit: int = 1000
     score_threshold: float = 0.0
 
     # CloudFront (for photo URLs)
@@ -69,6 +70,7 @@ def get_settings() -> Settings:
     logger.info(f"COLBERT_BATCH_SIZE: {settings.colbert_batch_size}")
     logger.info(f"DEFAULT_SEARCH_LIMIT: {settings.default_search_limit}")
     logger.info(f"MAX_SEARCH_LIMIT: {settings.max_search_limit}")
+    logger.info(f"PREFETCH_LIMIT: {settings.prefetch_limit}")
     logger.info(f"SCORE_THRESHOLD: {settings.score_threshold}")
     logger.info(f"CLOUD_FRONT_URL: {settings.cloud_front_url}")
     logger.info("=" * 50)

@@ -43,12 +43,12 @@ class QueryMapper:
         "max_income": ("income", "lte"),
 
         # MatchAny filters (OR condition - all accept arrays)
-        "genders": ("gender", "match_any"),
-        "religions": ("religion", "match_any"),
-        "locations": ("location", "match_any"),
-        "marital_statuses": ("marital_status", "match_any"),
-        "family_types": ("family_type", "match_any"),
-        "food_habits": ("food_habits", "match_any"),
+        "gender": ("gender", "match_any"),
+        "religion": ("religion", "match_any"),
+        "location": ("location", "match_any"),
+        "marital_status": ("marital_status", "match_any"),
+        "family_type": ("family_type", "match_any"),
+        "food_habit": ("food_habits", "match_any"),
         "smoking": ("smoking", "match_any"),
         "drinking": ("drinking", "match_any"),
         "religiosity": ("religiosity", "match_any"),
@@ -58,8 +58,8 @@ class QueryMapper:
 
     # All categorical filter keys (all support arrays)
     ARRAY_FILTER_KEYS = [
-        "genders", "religions", "locations", "marital_statuses",
-        "family_types", "food_habits", "smoking", "drinking",
+        "gender", "religion", "location", "marital_status",
+        "family_type", "food_habit", "smoking", "drinking",
         "religiosity", "fitness", "intent"
     ]
 

@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from qdrant_client import models
 
 from ..config.embedding_specs import VECTOR_CONFIG
+from ..config.settings import get_settings
 
 
 class QueryMode(Enum):
@@ -77,6 +78,8 @@ class DynamicQueryBuilder:
         prefetches = []
         vectors_used = []
 
+        settings = get_settings()
+
         # Build prefetch for each dense vector (education, profession)
         for field in ["education", "profession"]:
             if field in context.dense_vectors:
@@ -84,7 +87,7 @@ class DynamicQueryBuilder:
                 prefetches.append(models.Prefetch(
                     query=embedding,
                     using=field,
-                    limit=context.limit + context.offset,
+                    limit=settings.prefetch_limit,
                     filter=context.filter_obj,
                 ))
                 vectors_used.append(f"{field}(openai)")
@@ -94,7 +97,7 @@ class DynamicQueryBuilder:
             prefetches.append(models.Prefetch(
                 query=context.colbert_vectors["vibe_report"],
                 using="vibe_report",
-                limit=context.limit + context.offset,
+                limit=settings.prefetch_limit,
                 filter=context.filter_obj,
             ))
             vectors_used.append("vibe_report(colbert)")
