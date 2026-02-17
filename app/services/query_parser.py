@@ -10,111 +10,125 @@ from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Strict JSON schema for query parsing output
+QUERY_PARSER_SCHEMA = {
+    "name": "parsed_query",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "filters": {
+                "type": "object",
+                "description": "Hard filters for search",
+                "properties": {
+                    "min_age": {"type": ["integer", "null"], "description": "Minimum age"},
+                    "max_age": {"type": ["integer", "null"], "description": "Maximum age"},
+                    "min_height": {"type": ["integer", "null"], "description": "Minimum height in INCHES (convert cm to inches if needed: divide by 2.54)"},
+                    "max_height": {"type": ["integer", "null"], "description": "Maximum height in INCHES"},
+                    "min_income": {"type": ["integer", "null"], "description": "Minimum income in LPA"},
+                    "max_income": {"type": ["integer", "null"], "description": "Maximum income in LPA"},
+                    "genders": {"type": ["array", "null"], "items": {"type": "string", "enum": ["male", "female"]}},
+                    "religions": {"type": ["array", "null"], "items": {"type": "string", "enum": ["HI", "MU", "CR", "SI", "JA", "BU", "PA", "JE", "BA", "NR"]}},
+                    "locations": {"type": ["array", "null"], "items": {"type": "string"}, "description": "Location codes like IN_MB (Mumbai), IN_DEL (Delhi), IN_BLR (Bangalore). Use country prefix + city code."},
+                    "marital_statuses": {"type": ["array", "null"], "items": {"type": "string", "enum": ["NM", "DV", "WD", "AN"]}},
+                    "family_types": {"type": ["array", "null"], "items": {"type": "string", "enum": ["NU", "JF", "LP", "LT"]}},
+                    "food_habits": {"type": ["array", "null"], "items": {"type": "string", "enum": ["VGT", "NVT", "EGT", "VGN", "PST"]}},
+                    "smoking": {"type": ["array", "null"], "items": {"type": "string", "enum": ["NS", "SS", "SR"]}},
+                    "drinking": {"type": ["array", "null"], "items": {"type": "string", "enum": ["DD", "DS", "DR"]}},
+                    "religiosity": {"type": ["array", "null"], "items": {"type": "string", "enum": ["ST", "MO", "SP", "CU", "NO"]}},
+                    "fitness": {"type": ["array", "null"], "items": {"type": "string", "enum": ["ER", "ES", "EN"]}},
+                    "intent": {"type": ["array", "null"], "items": {"type": "string", "enum": ["01", "12", "23", "30"]}}
+                },
+                "required": ["min_age", "max_age", "min_height", "max_height", "min_income", "max_income", "genders", "religions", "locations", "marital_statuses", "family_types", "food_habits", "smoking", "drinking", "religiosity", "fitness", "intent"],
+                "additionalProperties": False
+            },
+            "education_query": {
+                "type": "string",
+                "description": "Education keywords exactly as mentioned. No expansion. Empty string if not mentioned."
+            },
+            "profession_query": {
+                "type": "string",
+                "description": "Profession keywords exactly as mentioned. No expansion. Empty string if not mentioned."
+            },
+            "vibe_report_query": {
+                "type": "string",
+                "description": "Personality traits and hobbies/interests exactly as mentioned. No fluff or expansion. Empty string if not mentioned."
+            }
+        },
+        "required": ["filters", "education_query", "profession_query", "vibe_report_query"],
+        "additionalProperties": False
+    }
+}
+
 SYSTEM_PROMPT = """You are a query parser for a matrimonial profile search system.
 Extract structured information from natural language queries.
 
-You must return a JSON object with these fields:
-- filters: Object containing hard filters (age, gender, religion, etc.)
-- education_query: Semantic query for education field (degrees, institutions, fields of study)
-- profession_query: Semantic query for profession field (job titles, companies, industries)
-- vibe_report_query: Semantic query for personality, vibe, lifestyle, and overall impression
+FILTER CODES:
+- religions: HI=Hindu, MU=Muslim, CR=Christian, SI=Sikh, JA=Jain, BU=Buddhist, PA=Parsi, JE=Jewish, BA=Bahai, NR=No Religion
+- marital_statuses: NM=Never Married, DV=Divorced, WD=Widowed, AN=Annulled
+- family_types: NU=Nuclear, JF=Joint, LP=Living with Parents, LT=Living Alone
+- food_habits: VGT=Vegetarian, NVT=Non-Vegetarian, EGT=Eggetarian, VGN=Vegan, PST=Pescatarian
+- smoking: NS=Non-Smoker, SS=Social Smoker, SR=Regular Smoker
+- drinking: DD=Non-Drinker, DS=Social Drinker, DR=Regular Drinker
+- religiosity: ST=Strict, MO=Moderate, SP=Spiritual, CU=Cultural, NO=Not Religious
+- fitness: ER=Exercise Regularly, ES=Exercise Sometimes, EN=Exercise Never
+- intent: 01=0-1 year, 12=1-2 years, 23=2-3 years, 30=3+ years marriage timeline
 
-Filter fields (use null if not specified):
-- min_age, max_age: Integer age range
-- genders: Array of ["male", "female"]
-- religions: Array of religion codes ["HI", "MU", "CR", "SI", "JA", "BU", "PA", "JE", "BA", "NR"]
-  Religion code meanings: HI=Hindu, MU=Muslim, CR=Christian, SI=Sikh, JA=Jain, BU=Buddhist, PA=Parsi, JE=Jewish, BA=Bahai, NR=No Religion
-- locations: Array of city/state names (e.g., ["Mumbai", "Delhi", "Bangalore", "Maharashtra", "Karnataka"])
-- marital_statuses: Array of ["NM", "DV", "WD", "AN"] (Never Married, Divorced, Widowed, Annulled)
-- family_types: Array of ["NU", "JF", "LP", "LT"] (Nuclear, Joint, Living with Parents, Living Alone)
-- food_habits: Array of ["VGT", "NVT", "EGT", "VGN", "PST"] (Vegetarian, Non-Vegetarian, Eggetarian, Vegan, Pescatarian)
-- smoking: Array of ["NS", "SS", "SR"] (Non-Smoker, Social Smoker, Regular Smoker)
-- drinking: Array of ["DD", "DS", "DR"] (Non-Drinker, Social Drinker, Regular Drinker)
-- religiosity: Array of ["ST", "MO", "SP", "CU", "NO"] (Strict, Moderate, Spiritual, Cultural, Not Religious)
-- fitness: Array of ["ER", "ES", "EN"] (Exercise Regularly, Exercise Sometimes, Exercise Never)
-- intent: Array of ["01", "12", "23", "30"] (0-1 year, 1-2 years, 2-3 years, 3+ years marriage timeline)
-- min_height, max_height: Integer height in inches (e.g., 60 inches = 5'0", 72 inches = 6'0")
-- min_income, max_income: Integer income in LPA (Lakhs Per Annum, e.g., 10 = 10 LPA)
+LOCATION CODES (use these exact codes):
+India: IN_MB=Mumbai, IN_DEL=Delhi, IN_BLR=Bangalore, IN_HYD=Hyderabad, IN_CHE=Chennai, IN_KOL=Kolkata, IN_PUN=Pune, IN_AHM=Ahmedabad, IN_JAI=Jaipur, IN_LKO=Lucknow, IN_GUR=Gurugram, IN_NOI=Noida, IN_CHD=Chandigarh, IN_IND=Indore, IN_NAG=Nagpur, IN_COI=Coimbatore, IN_KOC=Kochi, IN_THI=Thiruvananthapuram, IN_VIZ=Visakhapatnam, IN_VAD=Vadodara, IN_SUR=Surat, IN_LUD=Ludhiana, IN_MYS=Mysore
+USA: US_NYC=New York, US_LA=Los Angeles, US_SF=San Francisco, US_CHI=Chicago, US_SEA=Seattle, US_BOS=Boston, US_WAS=Washington DC, US_HOU=Houston, US_DAL=Dallas, US_ATL=Atlanta, US_DEN=Denver, US_PHX=Phoenix, US_SD=San Diego, US_SJ=San Jose, US_AUS=Austin
+UK: UK_LON=London, UK_MAN=Manchester, UK_BIR=Birmingham, UK_EDI=Edinburgh, UK_GLA=Glasgow, UK_LEE=Leeds, UK_CAM=Cambridge, UK_OXF=Oxford
+Canada: CA_TOR=Toronto, CA_VAN=Vancouver, CA_MON=Montreal, CA_CAL=Calgary, CA_OTT=Ottawa
+UAE: AE_DXB=Dubai, AE_AUH=Abu Dhabi
+Singapore: SG_SG=Singapore
+Australia: AU_SYD=Sydney, AU_MEL=Melbourne, AU_BRI=Brisbane, AU_PER=Perth
+Germany: DE_BER=Berlin, DE_MUN=Munich, DE_FRA=Frankfurt
+Switzerland: CH_ZUR=Zurich, CH_GN=Geneva
 
-PARSING EXAMPLES:
+HEIGHT CONVERSION (CRITICAL):
+- If height >= 100 (like 150, 160, 170), it's in cm - convert to inches by dividing by 2.54
+- 150 cm = 59 inches, 160 cm = 63 inches, 170 cm = 67 inches, 180 cm = 71 inches
+- 5'0" = 60 inches, 5'6" = 66 inches, 6'0" = 72 inches
 
-Example 1: "Looking for a Hindu girl from Mumbai, age 25-30, working in tech"
+SEMANTIC QUERY RULES:
+1. education_query: Extract exactly what's mentioned, no expansion (e.g., "IIT Graduate" → "IIT Graduate")
+2. profession_query: Extract exactly what's mentioned, no expansion (e.g., "Software Engineer" → "Software Engineer")
+3. vibe_report_query: Extract hobbies/interests/personality exactly as mentioned, no fluff
+   - "loves guitar music and hiking" → "guitar music hiking"
+   - "ambitious and caring" → "ambitious caring"
+   - Keep it straightforward, no added words
+
+EXAMPLES:
+
+Query: "IIT graduate software engineer age 25-32 loves guitar and hiking height atleast 150"
 Output:
-{
-  "filters": {
-    "genders": ["female"],
-    "religions": ["HI"],
-    "locations": ["Mumbai"],
-    "min_age": 25,
-    "max_age": 30
-  },
-  "education_query": "",
-  "profession_query": "technology sector software engineer IT professional tech industry",
-  "vibe_report_query": ""
-}
+- filters: {min_age: 25, max_age: 32, min_height: 59}  (150cm = 59 inches)
+- education_query: "IIT graduate"
+- profession_query: "software engineer"
+- vibe_report_query: "guitar hiking"
 
-Example 2: "IIT graduate, someone ambitious and career-focused, preferably a doctor or engineer"
+Query: "Doctor from Mumbai, caring and empathetic person, height 5'6 to 6'"
 Output:
-{
-  "filters": {},
-  "education_query": "IIT Indian Institute of Technology engineering graduate prestigious institution",
-  "profession_query": "doctor physician medical professional engineer software developer",
-  "vibe_report_query": "ambitious career-focused driven professional goal-oriented successful hardworking"
-}
+- filters: {locations: ["IN_MB"], min_height: 66, max_height: 72}
+- education_query: ""
+- profession_query: "doctor"
+- vibe_report_query: "caring empathetic"
 
-Example 3: "Vegetarian, non-smoker, spiritual person who loves travel and music"
+Query: "CA or MBA, vegetarian, modern progressive mindset"
 Output:
-{
-  "filters": {
-    "food_habits": ["VGT"],
-    "smoking": ["NS"],
-    "religiosity": ["SP"]
-  },
-  "education_query": "",
-  "profession_query": "",
-  "vibe_report_query": "spiritual person travel enthusiast music lover adventurous cultured artistic wanderlust"
-}
+- filters: {food_habits: ["VGT"]}
+- education_query: "CA MBA"
+- profession_query: ""
+- vibe_report_query: "modern progressive"
 
-Example 4: "Someone earning above 20 LPA, MBA preferred, modern and progressive mindset"
+Query: "Hindu girl from Delhi, age 28-35, loves travel and photography"
 Output:
-{
-  "filters": {
-    "min_income": 20
-  },
-  "education_query": "MBA Master of Business Administration management graduate business school",
-  "profession_query": "",
-  "vibe_report_query": "modern progressive mindset liberal open-minded contemporary forward-thinking"
-}
+- filters: {genders: ["female"], religions: ["HI"], locations: ["IN_DEL"], min_age: 28, max_age: 35}
+- education_query: ""
+- profession_query: ""
+- vibe_report_query: "travel photography" """
 
-Example 5: "Divorced is fine, 35-45 age range, Bangalore based, family-oriented"
-Output:
-{
-  "filters": {
-    "marital_statuses": ["DV", "NM"],
-    "min_age": 35,
-    "max_age": 45,
-    "locations": ["Bangalore"]
-  },
-  "education_query": "",
-  "profession_query": "",
-  "vibe_report_query": "family-oriented values family traditional caring nurturing grounded"
-}
-
-IMPORTANT GUIDELINES:
-1. Keep semantic queries focused and concise. Extract only what's explicitly mentioned.
-2. Return empty string "" for semantic fields not mentioned in the query.
-3. For vibe_report_query, expand personality traits into related descriptors for better semantic matching.
-4. For education_query, include institution types and degree variations.
-5. For profession_query, include industry terms and job title variations.
-6. Always return valid JSON with no markdown formatting or code blocks.
-7. If a filter value is ambiguous, prefer the most common interpretation.
-8. Never invent or assume filters that aren't explicitly or implicitly stated in the query."""
-
-USER_PROMPT_TEMPLATE = """Parse this search query:
-
-"{query}"
-
-Return ONLY valid JSON, no markdown formatting."""
+USER_PROMPT_TEMPLATE = """Parse this search query: "{query}" """
 
 
 class QueryParser:
@@ -162,7 +176,7 @@ class QueryParser:
                     {"role": "user", "content": USER_PROMPT_TEMPLATE.format(query=query)},
                 ],
                 temperature=0,
-                response_format={"type": "json_object"},
+                response_format={"type": "json_schema", "json_schema": QUERY_PARSER_SCHEMA},
             )
 
             # Log token usage and cache status
@@ -185,10 +199,14 @@ class QueryParser:
             return self._empty_response(query, error=str(e))
 
     def _normalize_response(self, parsed: Dict[str, Any], original_query: str) -> Dict[str, Any]:
-        """Normalize parsed response to ensure all fields exist."""
+        """Normalize parsed response to ensure all fields exist and filter out nulls."""
+        # Filter out null values from filters
+        raw_filters = parsed.get("filters") or {}
+        filters = {k: v for k, v in raw_filters.items() if v is not None}
+
         return {
             "original_query": original_query,
-            "filters": parsed.get("filters") or {},
+            "filters": filters,
             "education_query": parsed.get("education_query") or "",
             "profession_query": parsed.get("profession_query") or "",
             "vibe_report_query": parsed.get("vibe_report_query") or "",

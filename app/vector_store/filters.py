@@ -8,7 +8,13 @@ from qdrant_client import models
 class FilterBuilder:
     """Build Qdrant filters from request parameters."""
 
-    RANGE_FIELDS = ["age", "height", "income"]
+    # Maps API field prefix to Qdrant payload field
+    # e.g., min_income -> filters on annual_income field
+    RANGE_FIELD_MAPPING = {
+        "age": "age",
+        "height": "height",
+        "income": "annual_income",  # API uses min_income/max_income, payload uses annual_income
+    }
 
     # All categorical filters support multiple values (match_any)
     # Maps API key → Qdrant payload field
@@ -57,16 +63,16 @@ class FilterBuilder:
         conditions = []
 
         # Range filters
-        for field in cls.RANGE_FIELDS:
-            min_key = f"min_{field}"
-            max_key = f"max_{field}"
+        for api_field, payload_field in cls.RANGE_FIELD_MAPPING.items():
+            min_key = f"min_{api_field}"
+            max_key = f"max_{api_field}"
 
             min_val = filters.get(min_key)
             max_val = filters.get(max_key)
 
             if min_val is not None or max_val is not None:
                 range_cond = models.FieldCondition(
-                    key=field,
+                    key=payload_field,
                     range=models.Range(
                         gte=min_val,
                         lte=max_val
@@ -152,8 +158,8 @@ class FilterBuilder:
     def get_filter_fields(cls) -> List[str]:
         """Get list of all supported filter fields."""
         range_keys = []
-        for field in cls.RANGE_FIELDS:
-            range_keys.extend([f"min_{field}", f"max_{field}"])
+        for api_field in cls.RANGE_FIELD_MAPPING.keys():
+            range_keys.extend([f"min_{api_field}", f"max_{api_field}"])
         return range_keys + list(cls.MATCH_ANY_FIELDS.keys())
 
     @classmethod
