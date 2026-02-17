@@ -27,19 +27,20 @@ QUERY_PARSER_SCHEMA = {
                     "max_height": {"type": ["integer", "null"], "description": "Maximum height in INCHES"},
                     "min_income": {"type": ["integer", "null"], "description": "Minimum income in LPA"},
                     "max_income": {"type": ["integer", "null"], "description": "Maximum income in LPA"},
-                    "genders": {"type": ["array", "null"], "items": {"type": "string", "enum": ["male", "female"]}},
-                    "religions": {"type": ["array", "null"], "items": {"type": "string", "enum": ["HI", "MU", "CR", "SI", "JA", "BU", "PA", "JE", "BA", "NR"]}},
-                    "locations": {"type": ["array", "null"], "items": {"type": "string"}, "description": "Location codes like IN_MB (Mumbai), IN_DEL (Delhi), IN_BLR (Bangalore). Use country prefix + city code."},
-                    "marital_statuses": {"type": ["array", "null"], "items": {"type": "string", "enum": ["NM", "DV", "WD", "AN"]}},
-                    "family_types": {"type": ["array", "null"], "items": {"type": "string", "enum": ["NU", "JF", "LP", "LT"]}},
-                    "food_habits": {"type": ["array", "null"], "items": {"type": "string", "enum": ["VGT", "NVT", "EGT", "VGN", "PST"]}},
+                    "gender": {"type": ["array", "null"], "items": {"type": "string", "enum": ["male", "female"]}},
+                    "religion": {"type": ["array", "null"], "items": {"type": "string", "enum": ["HI", "MU", "CR", "SI", "JA", "BU", "PA", "JE", "BA", "NR"]}},
+                    "location": {"type": ["array", "null"], "items": {"type": "string"}, "description": "Location codes like IN_MB (Mumbai), IN_DEL (Delhi), IN_BLR (Bangalore). Use country prefix + city code."},
+                    "marital_status": {"type": ["array", "null"], "items": {"type": "string", "enum": ["NM", "DV", "WD", "AN"]}},
+                    "family_type": {"type": ["array", "null"], "items": {"type": "string", "enum": ["NU", "JF", "LP", "LT"]}},
+                    "food_habit": {"type": ["array", "null"], "items": {"type": "string", "enum": ["VGT", "NVT", "EGT", "VGN", "PST"]}},
                     "smoking": {"type": ["array", "null"], "items": {"type": "string", "enum": ["NS", "SS", "SR"]}},
                     "drinking": {"type": ["array", "null"], "items": {"type": "string", "enum": ["DD", "DS", "DR"]}},
                     "religiosity": {"type": ["array", "null"], "items": {"type": "string", "enum": ["ST", "MO", "SP", "CU", "NO"]}},
                     "fitness": {"type": ["array", "null"], "items": {"type": "string", "enum": ["ER", "ES", "EN"]}},
-                    "intent": {"type": ["array", "null"], "items": {"type": "string", "enum": ["01", "12", "23", "30"]}}
+                    "intent": {"type": ["array", "null"], "items": {"type": "string", "enum": ["01", "12", "23", "30"]}},
+                    "open_to_children": {"type": ["array", "null"], "items": {"type": "string", "enum": ["yes", "no"]}, "description": "Open to having children: yes or no"}
                 },
-                "required": ["min_age", "max_age", "min_height", "max_height", "min_income", "max_income", "genders", "religions", "locations", "marital_statuses", "family_types", "food_habits", "smoking", "drinking", "religiosity", "fitness", "intent"],
+                "required": ["min_age", "max_age", "min_height", "max_height", "min_income", "max_income", "gender", "religion", "location", "marital_status", "family_type", "food_habit", "smoking", "drinking", "religiosity", "fitness", "intent", "open_to_children"],
                 "additionalProperties": False
             },
             "education_query": {
@@ -64,15 +65,16 @@ SYSTEM_PROMPT = """You are a query parser for a matrimonial profile search syste
 Extract structured information from natural language queries.
 
 FILTER CODES:
-- religions: HI=Hindu, MU=Muslim, CR=Christian, SI=Sikh, JA=Jain, BU=Buddhist, PA=Parsi, JE=Jewish, BA=Bahai, NR=No Religion
-- marital_statuses: NM=Never Married, DV=Divorced, WD=Widowed, AN=Annulled
-- family_types: NU=Nuclear, JF=Joint, LP=Living with Parents, LT=Living Alone
-- food_habits: VGT=Vegetarian, NVT=Non-Vegetarian, EGT=Eggetarian, VGN=Vegan, PST=Pescatarian
+- religion: HI=Hindu, MU=Muslim, CR=Christian, SI=Sikh, JA=Jain, BU=Buddhist, PA=Parsi, JE=Jewish, BA=Bahai, NR=No Religion
+- marital_status: NM=Never Married, DV=Divorced, WD=Widowed, AN=Annulled
+- family_type: NU=Nuclear, JF=Joint, LP=Living with Parents, LT=Living Alone
+- food_habit: VGT=Vegetarian, NVT=Non-Vegetarian, EGT=Eggetarian, VGN=Vegan, PST=Pescatarian
 - smoking: NS=Non-Smoker, SS=Social Smoker, SR=Regular Smoker
 - drinking: DD=Non-Drinker, DS=Social Drinker, DR=Regular Drinker
 - religiosity: ST=Strict, MO=Moderate, SP=Spiritual, CU=Cultural, NO=Not Religious
 - fitness: ER=Exercise Regularly, ES=Exercise Sometimes, EN=Exercise Never
 - intent: 01=0-1 year, 12=1-2 years, 23=2-3 years, 30=3+ years marriage timeline
+- open_to_children: yes=Open to children, no=Not open to children
 
 LOCATION CODES (use these exact codes):
 India: IN_MB=Mumbai, IN_DEL=Delhi, IN_BLR=Bangalore, IN_HYD=Hyderabad, IN_CHE=Chennai, IN_KOL=Kolkata, IN_PUN=Pune, IN_AHM=Ahmedabad, IN_JAI=Jaipur, IN_LKO=Lucknow, IN_GUR=Gurugram, IN_NOI=Noida, IN_CHD=Chandigarh, IN_IND=Indore, IN_NAG=Nagpur, IN_COI=Coimbatore, IN_KOC=Kochi, IN_THI=Thiruvananthapuram, IN_VIZ=Visakhapatnam, IN_VAD=Vadodara, IN_SUR=Surat, IN_LUD=Ludhiana, IN_MYS=Mysore
@@ -109,21 +111,21 @@ Output:
 
 Query: "Doctor from Mumbai, caring and empathetic person, height 5'6 to 6'"
 Output:
-- filters: {locations: ["IN_MB"], min_height: 66, max_height: 72}
+- filters: {location: ["IN_MB"], min_height: 66, max_height: 72}
 - education_query: ""
 - profession_query: "doctor"
 - vibe_report_query: "caring empathetic"
 
 Query: "CA or MBA, vegetarian, modern progressive mindset"
 Output:
-- filters: {food_habits: ["VGT"]}
+- filters: {food_habit: ["VGT"]}
 - education_query: "CA MBA"
 - profession_query: ""
 - vibe_report_query: "modern progressive"
 
 Query: "Hindu girl from Delhi, age 28-35, loves travel and photography"
 Output:
-- filters: {genders: ["female"], religions: ["HI"], locations: ["IN_DEL"], min_age: 28, max_age: 35}
+- filters: {gender: ["female"], religion: ["HI"], location: ["IN_DEL"], min_age: 28, max_age: 35}
 - education_query: ""
 - profession_query: ""
 - vibe_report_query: "travel photography" """
